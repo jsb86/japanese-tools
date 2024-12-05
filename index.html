@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>温度読みクイズ</title>
+  <style>
+    /* Previous styles remain the same */
+    :root {
+      --primary-color: #af9f67;
+      --thermometer-color: #ff4444;
+      --font-color: #0d0015;
+      --success-color: #28a745;
+      --background-color: #adab971a;
+      --error-color: #dc3545;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background: var(--background-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 2rem;
+      font-size: 2.5rem;
+    }
+
+    .thermometer-container {
+      width: 100px;
+      height: 200px;
+      position: relative;
+      margin: 20px auto;
+    }
+
+    .thermometer-tube {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 150px;
+      background: white;
+      border: 3px solid #333;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .thermometer-bulb {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 40px;
+      background: var(--thermometer-color);
+      border: 3px solid #333;
+      border-radius: 50%;
+    }
+
+    .mercury {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: var(--thermometer-color);
+      transition: height 0.5s ease;
+    }
+
+    .temperature-marks {
+      position: absolute;
+      right: 0px;
+      height: 170px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .mark {
+      width: 20px;
+      border-top: 1px solid #333;
+      text-align: left;
+      padding-left: 5px;
+    }
+
+    #temperature-display {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #2c3e50;
+      margin: 20px 0;
+      padding: 10px 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px var(--shadow-color);
+    }
+
+    #answers {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 30px auto;
+      max-width: 600px;
+    }
+
+    .answer {
+      background: white;
+      padding: 15px 25px;
+      border: 2px solid var(--primary-color);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 10px var(--shadow-color);
+    }
+
+    .answer:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px var(--shadow-color);
+    }
+
+    .answer.correct {
+      background-color: var(--success-color);
+      color: white;
+      border-color: var(--success-color);
+    }
+
+    .answer.wrong {
+      background-color: var(--error-color);
+      color: white;
+      border-color: var(--error-color);
+    }
+
+    .feedback {
+      font-size: 56px;
+      font-weight: bold;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0s 0.3s;
+      z-index: 1000;
+      padding: 20px 40px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .feedback.show {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+
+    .feedback.correct {
+      color: var(--success-color);
+    }
+
+    .feedback.wrong {
+      color: var(--error-color);
+    }
+
+    button {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 10px;
+      box-shadow: 0 2px 10px var(--shadow-color);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px var(--shadow-color);
+    }
+  </style>
+</head>
+<body>
+  <h1>なんどですか?</h1>
+  <div id="temperature-display"></div>
+  <div class="thermometer-container">
+    <div class="thermometer-tube">
+      <div class="mercury" id="mercury"></div>
+    </div>
+    <div class="thermometer-bulb"></div>
+    <div class="temperature-marks">
+      <div class="mark">40°C</div>
+      <div class="mark">30°C</div>
+      <div class="mark">20°C</div>
+      <div class="mark">10°C</div>
+      <div class="mark">0°C</div>
+      <div class="mark">-10°C</div>
+    </div>
+  </div>
+  <div class="button-group">
+    <button id="reset-btn">Reset</button>
+    <button id="hint-btn">Hint</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+  <div id="answers"></div>
+
+  <script>
+    const hiraganaNumbers = {
+      '-': 'まいなす',
+      0: 'れい',
+      1: 'いち',
+      2: 'に',
+      3: 'さん',
+      4: 'よん',
+      5: 'ご',
+      6: 'ろく',
+      7: 'なな',
+      8: 'はち',
+      9: 'きゅう',
+      10: 'じゅう',
+      20: 'にじゅう',
+      30: 'さんじゅう'
+    };
+
+    function numberToHiragana(num) {
+      let isNegative = num < 0;
+      num = Math.abs(num);
+      
+      let wholePart = Math.floor(num);
+      let decimalPart = Math.round((num - wholePart) * 10);
+      
+      let result = '';
+      
+      if (isNegative) {
+        result += hiraganaNumbers['-'] + ' ';
+      }
+      
+      if (wholePart === 0) {
+        result += hiraganaNumbers[0];
+      } else if (wholePart <= 10) {
+        result += hiraganaNumbers[wholePart];
+      } else {
+        let tens = Math.floor(wholePart / 10) * 10;
+        let ones = wholePart % 10;
+        result += hiraganaNumbers[tens];
+        if (ones > 0) {
+          result += hiraganaNumbers[ones];
+        }
+      }
+      
+      if (decimalPart > 0) {
+        result += ' てん ' + hiraganaNumbers[decimalPart];
+      }
+      
+      return result + ' ど';
+    }
+
+    function generateRandomTemp() {
+      return Math.round((Math.random() * 50 - 10) * 10) / 10;
+    }
+
+    function updateThermometer(temperature) {
+      const mercury = document.getElementById('mercury');
+      const height = ((temperature + 10) / 50) * 100;
+      mercury.style.height = `${height}%`;
+      
+      // Update the temperature display
+      const display = document.getElementById('temperature-display');
+      display.textContent = `${temperature.toFixed(1)}°C`;
+    }
+
+    let currentTemp;
+    let correctAnswer;
+
+    function showFeedback(isCorrect) {
+      const feedbackElement = document.getElementById('feedback');
+      feedbackElement.textContent = isCorrect ? '〇' : '×';
+      feedbackElement.className = `feedback show ${isCorrect ? 'correct' : 'wrong'}`;
+      setTimeout(() => {
+        feedbackElement.className = 'feedback';
+      }, 2000);
+    }
+
+    function checkAnswer(selectedAnswer, answerElement) {
+      const allAnswers = document.querySelectorAll('.answer');
+      allAnswers.forEach(ans => ans.style.pointerEvents = 'none');
+
+      const isCorrect = selectedAnswer === correctAnswer;
+      
+      if (isCorrect) {
+        answerElement.classList.add('correct');
+        showFeedback(true);
+      } else {
+        answerElement.classList.add('wrong');
+        const correctElement = [...allAnswers].find(ans => ans.textContent === correctAnswer);
+        correctElement.classList.add('correct');
+        showFeedback(false);
+      }
+
+      setTimeout(reset, 2000);
+    }
+
+    function generateAnswers() {
+      const answers = new Set([correctAnswer]);
+      
+      while (answers.size < 4) {
+        const randomTemp = generateRandomTemp();
+        answers.add(numberToHiragana(randomTemp));
+      }
+
+      const answersContainer = document.getElementById('answers');
+      answersContainer.innerHTML = Array.from(answers)
+        .sort(() => Math.random() - 0.5)
+        .map(answer => `<div class="answer">${answer}</div>`)
+        .join('');
+
+      document.querySelectorAll('.answer').forEach(answer => {
+        answer.addEventListener('click', () => {
+          checkAnswer(answer.textContent, answer);
+        });
+      });
+    }
+
+    function reset() {
+      currentTemp = generateRandomTemp();
+      correctAnswer = numberToHiragana(currentTemp);
+      updateThermometer(currentTemp);
+      generateAnswers();
+    }
+
+    function speakText(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ja-JP';
+      window.speechSynthesis.speak(utterance);
+    }
+
+    document.getElementById('reset-btn').addEventListener('click', reset);
+    document.getElementById('hint-btn').addEventListener('click', () => {
+      speakText(correctAnswer);
+    });
+
+    reset();
+  </script>
+</body>
+</html>
